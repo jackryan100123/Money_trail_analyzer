@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 5000,
     allowedHosts: [
-      "money-trail-analyzer.onrender.com",
+      "money-trail-analyzer-1.onrender.com",
     ],
     hmr: {
       overlay: false,
