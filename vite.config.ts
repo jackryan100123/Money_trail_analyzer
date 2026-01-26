@@ -7,12 +7,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 5000,
-    allowedHosts: [
-      "money-trail-analyzer-1.onrender.com",
-    ],
-    hmr: {
-      overlay: false,
-    },
   },
   plugins: [
     react(),
@@ -21,6 +15,15 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
     },
   },
 }));
