@@ -110,7 +110,7 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
   },
   
   setFilters: (newFilters) => {
-    const { filters, transfers, withdrawals, utrToRow } = get();
+    const { filters, transfers, withdrawals, utrToRow, selectedNode } = get();
     const updatedFilters = { ...filters, ...newFilters };
     
     const { nodes, edges } = buildMoneyTrailGraph(
@@ -121,10 +121,15 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       utrToRow
     );
     
+    // Clear selected node if it no longer exists after filtering
+    const shouldClearSelection = selectedNode && !nodes.find(n => n.id === selectedNode);
+    
     set({
       filters: updatedFilters,
       graphNodes: nodes,
       graphEdges: edges,
+      selectedNode: shouldClearSelection ? null : selectedNode,
+      collapsedNodes: new Set(), // Reset collapsed nodes when filters change
     });
   },
   
