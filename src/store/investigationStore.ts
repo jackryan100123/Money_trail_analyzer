@@ -12,8 +12,7 @@ import {
   extractMoneyTransfers, 
   extractWithdrawals, 
   buildMoneyTrailGraph,
-  searchAccount,
-  getCanonicalAccountId
+  searchAccount 
 } from '@/lib/graphBuilder';
 
 interface InvestigationState {
@@ -32,6 +31,7 @@ interface InvestigationState {
   collapsedNodes: Set<string>;
   selectedNode: string | null;
   activeView: 'graph' | 'data' | 'search' | 'withdrawals';
+  visibleLayers: Set<number>; // Empty = all visible, otherwise only specified layers
   
   // Filters
   filters: FilterState;
@@ -46,16 +46,15 @@ interface InvestigationState {
   setActiveView: (view: 'graph' | 'data' | 'search' | 'withdrawals') => void;
   rebuildGraph: () => void;
   
+  // Layer visibility
+  toggleLayerVisibility: (layer: number) => void;
+  showAllLayers: () => void;
+  setVisibleLayers: (layers: number[]) => void;
+  
   // Search
   searchResults: ReturnType<typeof searchAccount> | null;
   performSearch: (account: string) => void;
   clearSearch: () => void;
-  
-  // Graph search (for navigating to nodes)
-  graphSearchQuery: string;
-  graphSearchResult: string | null; // nodeId or null
-  performGraphSearch: (query: string) => void;
-  clearGraphSearch: () => void;
 }
 
 export const useInvestigationStore = create<InvestigationState>((set, get) => ({
@@ -71,8 +70,7 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
   selectedNode: null,
   activeView: 'graph',
   searchResults: null,
-  graphSearchQuery: '',
-  graphSearchResult: null,
+  visibleLayers: new Set(), // Empty = all visible
   
   filters: {
     maxLayer: 4, // Default to layer 4 per user requirement
@@ -106,11 +104,12 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       graphEdges: edges,
       collapsedNodes: new Set(),
       selectedNode: null,
+      visibleLayers: new Set(), // Reset to show all layers
     });
   },
   
   setFilters: (newFilters) => {
-    const { filters, transfers, withdrawals, utrToRow, selectedNode } = get();
+    const { filters, transfers, withdrawals, utrToRow } = get();
     const updatedFilters = { ...filters, ...newFilters };
     
     const { nodes, edges } = buildMoneyTrailGraph(
@@ -121,15 +120,11 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       utrToRow
     );
     
-    // Clear selected node if it no longer exists after filtering
-    const shouldClearSelection = selectedNode && !nodes.find(n => n.id === selectedNode);
-    
     set({
       filters: updatedFilters,
       graphNodes: nodes,
       graphEdges: edges,
-      selectedNode: shouldClearSelection ? null : selectedNode,
-      collapsedNodes: new Set(), // Reset collapsed nodes when filters change
+      visibleLayers: new Set(), // Reset layer visibility when filters change
     });
   },
   
@@ -185,6 +180,49 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
     });
   },
   
+  // Layer visibility actions
+  toggleLayerVisibility: (layer) => {
+    const { visibleLayers, graphNodes } = get();
+    const newVisible = new Set(visibleLayers);
+    
+    // Get all available layers
+    const allLayers = new Set(
+      graphNodes.filter(n => n.type === 'account').map(n => n.layer)
+    );
+    
+    // If currently showing all (empty set), switch to showing all except clicked
+    if (newVisible.size === 0) {
+      allLayers.forEach(l => {
+        if (l !== layer) newVisible.add(l);
+      });
+    } else if (newVisible.has(layer)) {
+      // If layer is visible, hide it
+      newVisible.delete(layer);
+      // If all would be hidden, show all instead
+      if (newVisible.size === 0) {
+        // Keep at least one layer visible - re-add this one
+        newVisible.add(layer);
+      }
+    } else {
+      // If layer is hidden, show it
+      newVisible.add(layer);
+      // If all layers are now visible, clear the set (show all mode)
+      if (newVisible.size === allLayers.size) {
+        newVisible.clear();
+      }
+    }
+    
+    set({ visibleLayers: newVisible });
+  },
+  
+  showAllLayers: () => {
+    set({ visibleLayers: new Set() });
+  },
+  
+  setVisibleLayers: (layers) => {
+    set({ visibleLayers: new Set(layers) });
+  },
+  
   performSearch: (account) => {
     const { transfers, withdrawals, sheets } = get();
     const results = searchAccount(account, transfers, withdrawals, sheets);
@@ -198,90 +236,6 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
     set({ 
       searchResults: null,
       filters: { ...get().filters, searchAccount: '' }
-    });
-  },
-  
-  performGraphSearch: (query) => {
-    const { graphNodes, graphEdges } = get();
-    const searchTerm = query.trim();
-    
-    if (!searchTerm) {
-      set({ graphSearchQuery: '', graphSearchResult: null, selectedNode: null });
-      return;
-    }
-    
-    // Search by account number (canonical matching)
-    const accountCanonical = getCanonicalAccountId(searchTerm);
-    
-    // Search by UTR
-    const utrSearch = searchTerm;
-    
-    // Find matching node
-    let foundNodeId: string | null = null;
-    
-    for (const node of graphNodes) {
-      // Match by account (canonical)
-      if (accountCanonical) {
-        const nodeCanonical = getCanonicalAccountId(node.account);
-        if (nodeCanonical === accountCanonical) {
-          foundNodeId = node.id;
-          break;
-        }
-      }
-      
-      // Match by account (exact or partial)
-      if (node.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          node.account.includes(searchTerm)) {
-        foundNodeId = node.id;
-        break;
-      }
-      
-      // Match by UTR in transactions
-      for (const txn of node.transactions) {
-        if (txn.utr && (txn.utr.includes(utrSearch) || txn.utr === utrSearch)) {
-          foundNodeId = node.id;
-          break;
-        }
-      }
-      
-      // Match by node's UTR fields
-      if (node.utrSent && (node.utrSent.includes(utrSearch) || node.utrSent === utrSearch)) {
-        foundNodeId = node.id;
-        break;
-      }
-      if (node.utrReceived && (node.utrReceived.includes(utrSearch) || node.utrReceived === utrSearch)) {
-        foundNodeId = node.id;
-        break;
-      }
-      
-      if (foundNodeId) break;
-    }
-    
-    // Also search edges for UTR matches
-    if (!foundNodeId) {
-      for (const edge of graphEdges) {
-        if (edge.utr && (edge.utr.includes(utrSearch) || edge.utr === utrSearch)) {
-          // Find the target node (withdrawal) or source node
-          const targetNode = graphNodes.find(n => n.id === edge.target);
-          if (targetNode) {
-            foundNodeId = targetNode.id;
-            break;
-          }
-        }
-      }
-    }
-    
-    set({ 
-      graphSearchQuery: searchTerm,
-      graphSearchResult: foundNodeId,
-      selectedNode: foundNodeId
-    });
-  },
-  
-  clearGraphSearch: () => {
-    set({ 
-      graphSearchQuery: '',
-      graphSearchResult: null
     });
   },
 }));
