@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, BarChart3, Search, Database, Layers, Filter, Download, RotateCcw } from 'lucide-react';
+import { Upload, BarChart3, Search, Database, Layers, Filter, Download, RotateCcw ,Banknote, FileText, GitCompare} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -132,6 +132,14 @@ export function Sidebar() {
         >
           <Search className="w-4 h-4" />
           Account Search
+        </Button>
+        <Button
+          variant={activeView === 'crossTrail' ? 'default' : 'ghost'}
+          className="w-full justify-start gap-2"
+          onClick={() => setActiveView('crossTrail')}
+        >
+          <GitCompare className="w-4 h-4" />
+          Cross-Trail Analysis
         </Button>
       </div>
 

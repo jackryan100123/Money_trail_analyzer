@@ -30,7 +30,7 @@ interface InvestigationState {
   // UI State
   collapsedNodes: Set<string>;
   selectedNode: string | null;
-  activeView: 'graph' | 'data' | 'search' | 'withdrawals';
+  activeView: 'graph' | 'data' | 'search' | 'withdrawals' | 'crossTrail';
   visibleLayers: Set<number>; // Empty = all visible, otherwise only specified layers
   
   // Filters
@@ -43,7 +43,7 @@ interface InvestigationState {
   collapseLayer: (layer: number) => void;
   expandAll: () => void;
   setSelectedNode: (nodeId: string | null) => void;
-  setActiveView: (view: 'graph' | 'data' | 'search' | 'withdrawals') => void;
+  setActiveView: (view: 'graph' | 'data' | 'search' | 'withdrawals' | 'crossTrail') => void;
   rebuildGraph: () => void;
   
   // Layer visibility

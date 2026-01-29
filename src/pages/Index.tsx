@@ -5,6 +5,7 @@ import { GraphLegend } from '@/components/graph/GraphLegend';
 import { DataPreview } from '@/components/views/DataPreview';
 import { AccountSearch } from '@/components/views/AccountSearch';
 import { WithdrawalsView } from '@/components/views/WithdrawalsView';
+import { CrossTrailAnalysis } from '@/components/views/CrossTrailAnalysis';
 import { NodeFlowSummary } from '@/components/panels/NodeFlowSummary';
 import { useInvestigationStore } from '@/store/investigationStore';
 
@@ -28,11 +29,13 @@ const Index = () => {
         
         {activeView === 'search' && <AccountSearch />}
         
-         {activeView === 'withdrawals' && (
+        {activeView === 'withdrawals' && (
           <ReactFlowProvider>
             <WithdrawalsView />
           </ReactFlowProvider>
         )}
+        
+        {activeView === 'crossTrail' && <CrossTrailAnalysis />}
       </main>
     </div>
   );
